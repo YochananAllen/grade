@@ -1,80 +1,107 @@
 // grade.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //Yochanan Allen
-//https://github.com/YochananAllen/grade.git
+//
 
-//Write the program so that the
-//data is stored in partially filled arrays and the actual number of students represented in the file is
-//counted as the file is read.The number of test scores on the file should be stored as a global
-//constant.
+// write a program that uses the number of students test scores stored as the first entry in the data file , followed by the students recoreds, and add the student ID 
 
 
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <string>
 
 using namespace std;
 
 
-const string fileName = "studentFile"; 
-const int NUM_TEST = 5; 
-const int MAX_STUDENTS = 20; 
+struct Student {
+    string name;
+    int id;
+    double* scores;
+    double average;
+    string grade;
+};
 
 
-int getStudentData(ifstream& infile, string names[], double scores[][NUM_TEST]);
-int calculateAverages(double scores[][NUM_TEST], double averages[], int numStudents);
+int displayFileContents(const string& filename);
+Student* getData(ifstream& file, int& studentCnt, int& testsCnt);
+int calcAverage(Student students[], int studentCnt, int testsCnt);
 string calculateGrade(double average);
-int printReport(string names[], double averages[], int numStudents);
+int printReport(Student students[], int studentCnt);
+int cleanup(Student* students, int studentCnt);
 
 int main() {
-    ifstream inputfile;
-    string names[MAX_STUDENTS];
-    double testScores[MAX_STUDENTS][NUM_TEST];
-    double averages[MAX_STUDENTS];
-    int numStudents;
-
-    
-    inputfile.open(fileName);
-    if (!inputfile.is_open()) {
-        cout << "File did not open." << endl;
+    string filename = "studentFile";
+    if (displayFileContents(filename) != 0) {
         return 1;
     }
 
+    ifstream inputFile(filename);
+    if (!inputFile) {
+        cout << "Error opening file." << endl;
+        return 1;
+    }
 
-    numStudents = getStudentData(inputfile, names, testScores);
+    int studentCnt, testsCnt;
+    Student* students = getData(inputFile, studentCnt, testsCnt);
+    inputFile.close();
 
-    
-    calculateAverages(testScores, averages, numStudents);
+    if (!students) {
+        cout << "Error reading data." << endl;
+        return 1;
+    }
 
-    
-    printReport(names, averages, numStudents);
+    calcAverage(students, studentCnt, testsCnt);
+    printReport(students, studentCnt);
+    cleanup(students, studentCnt);
 
-    inputfile.close();
     return 0;
 }
 
 
-int getStudentData(ifstream& infile, string names[], double scores[][NUM_TEST]) {
-    int count = 0;
-    while (infile >> names[count]) {
-        
-        for (int t = 0; t < NUM_TEST; t++) {
-            infile >> scores[count][t];
-        }
-        count++;
-        if (count >= MAX_STUDENTS) break; 
+int displayFileContents(const string& filename) {
+    ifstream file(filename);
+    if (!file) {
+        cout << "Error opening file for display." << endl;
+        return 1;
     }
-    return count; 
+    cout << "File Contents:\n";
+    string line;
+    while (getline(file, line)) {
+        cout << line << endl;
+    }
+    file.close();
+    cout << "--------------------------------------\n";
+    return 0;
 }
 
-int calculateAverages(double scores[][NUM_TEST], double averages[], int numStudents) {
-    for (int i = 0; i < numStudents; i++) {
-        double total = 0;
-        for (int t = 0; t < NUM_TEST; t++) {
-            total += scores[i][t];
+
+Student* getData(ifstream& file, int& studentCnt, int& testsCnt) {
+    file >> studentCnt >> testsCnt;
+    Student* students = new Student[studentCnt];
+
+    for (int i = 0; i < studentCnt; i++) {
+        file >> students[i].name;
+        file >> students[i].id;
+        students[i].scores = new double[testsCnt];
+
+        for (int j = 0; j < testsCnt; j++) {
+            file >> students[i].scores[j];
         }
-        averages[i] = total / NUM_TEST; 
     }
-    return numStudents; 
+    return students;
+}
+
+
+int calcAverage(Student students[], int studentCnt, int testsCnt) {
+    for (int i = 0; i < studentCnt; i++) {
+        double total = 0;
+        for (int j = 0; j < testsCnt; j++) {
+            total += students[i].scores[j];
+        }
+        students[i].average = total / testsCnt;
+        students[i].grade = calculateGrade(students[i].average);
+    }
+    return 0;
 }
 
 
@@ -83,22 +110,35 @@ string calculateGrade(double average) {
     if (average >= 80) return "B";
     if (average >= 70) return "C";
     if (average >= 60) return "D";
-    return "F"; 
-    
+    return "F";
 }
-int printReport(string names[], double averages[], int numStudents) {
-
-    cout << "Name    Average   Grade" << endl;
 
 
-
-    for (int i = 0; i < numStudents; i++) {
-        string grade = calculateGrade(averages[i]);
-        cout << names[i] << "      " << fixed << setprecision(2) << averages[i] << "     " << grade << endl;
+int printReport(Student students[], int studentCnt) {
+    cout << "Student        ID        Score     Grade" << endl;
+    cout << "----------------------------------------" << endl;
+    for (int i = 0; i < studentCnt; i++) {
+        cout << left << setw(15) << students[i].name
+            << setw(10) << students[i].id
+            << setw(10) << fixed << setprecision(1) << students[i].average
+            << setw(10) << students[i].grade << endl;
     }
-
     return 0;
 }
+
+
+int cleanup(Student* students, int studentCnt) {
+    for (int i = 0; i < studentCnt; i++) {
+        delete[] students[i].scores;
+    }
+    delete[] students;
+    return 0;
+}
+
+
+
+
+
 
 
 
